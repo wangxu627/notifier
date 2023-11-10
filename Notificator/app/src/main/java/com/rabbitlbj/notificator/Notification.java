@@ -1,11 +1,11 @@
 package com.rabbitlbj.notificator;
 
-public class Fruit {
+public class Notification {
 
     private String name;
     private int imageID;
 
-    public Fruit(String name, int imageID) {
+    public Notification(String name, int imageID) {
         this.name = name;
         this.imageID = imageID;
     }

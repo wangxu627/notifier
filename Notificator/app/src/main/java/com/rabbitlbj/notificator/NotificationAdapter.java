@@ -10,18 +10,18 @@ import android.widget.TextView;
 
 import java.util.List;
 
-public class FruitAdapter extends ArrayAdapter<Fruit> {
+public class NotificationAdapter extends ArrayAdapter<Notification> {
 
     private int resourceID;
 
-    public FruitAdapter(Context context, int textViewResourceID, List<Fruit> objects) {
+    public NotificationAdapter(Context context, int textViewResourceID, List<Notification> objects) {
         super(context, textViewResourceID, objects);
         resourceID = textViewResourceID;
     }
 
     @Override
     public View getView(int position,  View convertView, ViewGroup parent) {
-        Fruit fruit = getItem(position);
+        Notification fruit = getItem(position);
         View view;
         ViewHolder viewHolder = null;
         if (convertView == null) {
