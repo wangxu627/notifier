@@ -7,8 +7,16 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Message;
+import android.os.Messenger;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -34,6 +42,28 @@ public class MainActivity extends AppCompatActivity {
     private NotificationAdapter notificationAdapter;
     private static final String NOTIFICATION_CHANNEL = "my_channel_id";
 
+
+    private Messenger serviceMessenger;
+
+    // Handler处理从Service传来的消息
+    private Handler activityHandler = new Handler(new Handler.Callback() {
+        @Override
+        public boolean handleMessage(Message msg) {
+            switch (msg.what) {
+                case 1:
+                    Bundle bundle = msg.getData();
+                    addNotificationIntoList(bundle.getString("title"), bundle.getString("content"));
+                    break;
+                case 2:
+                    List<NotificationAdapter.NotificationItem> listData = (List<NotificationAdapter.NotificationItem>)msg.obj;
+                    refillNotificationList(listData);
+                    break;
+            }
+            return true;
+        }
+    });
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -47,10 +77,17 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setAdapter(notificationAdapter);
         recyclerView.setLayoutManager(layoutManager);
 
-        connectToServer("router.wxioi.fun", 8991);
-//        connectToServer("10.196.10.21", 8991);
-    }
+//        connectToServer("router.wxioi.fun", 8991);
 
+        // 绑定Service
+
+        Intent intent = new Intent(this, NotificationService.class);
+        intent.putExtra("messenger", new Messenger(activityHandler));
+        startService(intent);
+
+//        bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+
+    }
 
     private void connectToServer(String serverIp, int serverPort) {
         new Thread(new Runnable() {
@@ -92,6 +129,11 @@ public class MainActivity extends AppCompatActivity {
         notificationAdapter.notifyDataSetChanged();
     }
 
+    private void refillNotificationList(List<NotificationAdapter.NotificationItem> listData) {
+        notificationList.clear();
+        notificationList.addAll(listData);
+        notificationAdapter.notifyDataSetChanged();
+    }
 
     private void showNotification(String title, String content) {
         int notificationId = (int) System.currentTimeMillis();
