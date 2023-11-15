@@ -2,6 +2,8 @@ package com.rabbitlbj.notificator;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NotificationCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -15,6 +17,7 @@ import android.widget.Toast;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -26,78 +29,77 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 public class MainActivity extends AppCompatActivity {
-
-    private List<Notification> notificationList = new ArrayList<Notification>();
-    private NotificationAdapter adapter;
+    private List<NotificationAdapter.NotificationItem> notificationList = new ArrayList<>();
+    private NotificationAdapter notificationAdapter;
+    private static final String NOTIFICATION_CHANNEL = "my_channel_id";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        notificationList.add(NotificationAdapter.createItem("Info", "Waiting for message..."));
+        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
+        notificationAdapter = new NotificationAdapter(notificationList);
+        RecyclerView recyclerView = findViewById(R.id.recyclerView);
+        recyclerView.setAdapter(notificationAdapter);
+        recyclerView.setLayoutManager(layoutManager);
 
-        adapter = new NotificationAdapter(MainActivity.this, R.layout.fruit_item, notificationList);
-        ListView listView = findViewById(R.id.list_view);
-        listView.setAdapter(adapter);
-
-        Button button = findViewById(R.id.button);
-        button.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Toast.makeText(MainActivity.this, "这是一个Toast提示", Toast.LENGTH_SHORT).show();
-
-                Notification apple = new Notification("Apple", R.mipmap.ic_launcher);
-                notificationList.add(apple);
-                adapter.notifyDataSetChanged();
-            }
-        });
-
-        MyThread thread = new MyThread(this);
-        thread.start();
+//        connectToServer("router.wxioi.fun", 8991);
+        connectToServer("10.196.10.21", 8991);
     }
 
 
-
-    public void updateUI(String message) {
-        runOnUiThread(new Runnable() {
+    private void connectToServer(String serverIp, int serverPort) {
+        new Thread(new Runnable() {
             @Override
             public void run() {
-                Notification item = new Notification(message, R.mipmap.ic_launcher);
-                notificationList.add(item);
-                adapter.notifyDataSetChanged();
-
-                showNotification(message);
-
+                try {
+                    Socket socket = new Socket(serverIp, serverPort);
+                    InputStream inputStream = socket.getInputStream();
+                    byte[] buffer = new byte[1024];
+                    int bytesRead;
+                    while ((bytesRead = inputStream.read(buffer)) != -1) {
+                        String message = new String(buffer, 0, bytesRead);
+                        String[] parts = message.split("\u0001");
+                        if(parts.length == 2) {
+                            addMessage(parts[0], parts[1]);
+                        } else {
+                            addMessage("", parts[0]);
+                        }
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
-        });
+
+            void addMessage(String title, String content) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        showNotification(title, content);
+                        addNotificationIntoList(title, content);
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void addNotificationIntoList(String title, String content) {
+        notificationList.add(NotificationAdapter.createItem(title, content));
+        notificationAdapter.notifyDataSetChanged();
     }
 
 
-    private int generateUniqueId() {
-        Random random = new Random();
-        return random.nextInt(1000000); // 使用随机数生成通知ID
-    }
+    private void showNotification(String title, String content) {
+        int notificationId = (int) System.currentTimeMillis();
+        String channelId = NOTIFICATION_CHANNEL;
 
-    private void showNotification(String message) {
-        // 在这里添加弹出通知的代码
-        int notificationId = generateUniqueId(); // 通知的唯一标识符
-        String channelId = "my_channel_id"; // 通知渠道的ID，可以自定义
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelId)
-                .setSmallIcon(R.drawable.hello)
-                .setContentTitle("New Message")
-                .setContentText(message)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setAutoCancel(true); // 单击通知后自动取消通知
-
-        // 创建一个意图，当用户点击通知时执行
-//        Intent resultIntent = new Intent(this, MainActivity.class);
-//        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, resultIntent, PendingIntent.FLAG_IMMUTABLE);
-//        builder.setContentIntent(pendingIntent);
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelId).setSmallIcon(R.drawable.hello).setContentTitle(title).setContentText(content).setPriority(NotificationCompat.PRIORITY_DEFAULT).setAutoCancel(true);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence channelName = "My Channel"; // 通知渠道的名称
-            String channelDescription = "My Channel Description"; // 通知渠道的描述
+            CharSequence channelName = "My Channel";
+            String channelDescription = "My Channel Description";
             int importance = NotificationManager.IMPORTANCE_DEFAULT;
             NotificationChannel channel = new NotificationChannel(channelId, channelName, importance);
             channel.setDescription(channelDescription);
