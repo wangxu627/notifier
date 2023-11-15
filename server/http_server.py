@@ -4,8 +4,8 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from tcp_server import run_noify_server
 
-HTTP_PORT = 8001
-TCP_PORT = 8002
+HTTP_PORT = 8990
+TCP_PORT = 8991
 HOST = '0.0.0.0'
 
 app = FastAPI()
