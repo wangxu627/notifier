@@ -11,6 +11,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Toast;
@@ -37,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         notificationList.add(NotificationAdapter.createItem("Info", "Waiting for message..."));
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
@@ -45,8 +47,8 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setAdapter(notificationAdapter);
         recyclerView.setLayoutManager(layoutManager);
 
-//        connectToServer("router.wxioi.fun", 8991);
-        connectToServer("10.196.10.21", 8991);
+        connectToServer("router.wxioi.fun", 8991);
+//        connectToServer("10.196.10.21", 8991);
     }
 
 

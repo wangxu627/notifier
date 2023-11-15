@@ -8,7 +8,7 @@ android {
 
     defaultConfig {
         applicationId = "com.rabbitlbj.notificator"
-        minSdk = 24
+        minSdk = 19
         targetSdk = 33
         versionCode = 1
         versionName = "1.0"
