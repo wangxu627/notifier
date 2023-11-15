@@ -15,10 +15,11 @@ class MsgItem(BaseModel):
     msg: str
 
 
-@app.post("/msg/")
-def post_msg(data: MsgItem):
+@app.get("/msg/")
+def post_msg(title: str, content: str):
     app.q.put({
-        "msg": data.msg
+        "title": title or '',
+        "content": content or ''
     })
     return {"message": "queued"}
 

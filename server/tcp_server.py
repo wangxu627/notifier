@@ -24,9 +24,11 @@ class HttpProtocol(asyncio.Protocol):
         self.client_group.add_client(self)
 
     def connection_made(self, transport):
+        print("client connecct : ", transport.get_extra_info('peername'))
         self.transport = transport
 
     def connection_lost(self, exc):
+        print("client disconnecct : ", self.transport.get_extra_info('peername'))
         self.client_group.remove_client(self)
 
     def send_msg(self, msg):
@@ -37,7 +39,7 @@ def msg_notify(cg, q):
     while True:
         item = q.get()
         if item:
-          cg.sendall(item["msg"])
+          cg.sendall(f'{item["title"]}{chr(1)}{item["content"]}')
 
 
 def run_noify_server(host, port, q):
