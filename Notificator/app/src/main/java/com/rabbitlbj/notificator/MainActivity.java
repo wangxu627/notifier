@@ -72,11 +72,11 @@ public class MainActivity extends AppCompatActivity {
 
         notificationList.add(NotificationAdapter.createItem("Info", "Waiting for message..."));
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
-        notificationAdapter = new NotificationAdapter(notificationList);
+        notificationAdapter = new NotificationAdapter(this, notificationList);
         RecyclerView recyclerView = findViewById(R.id.recyclerView);
         recyclerView.setAdapter(notificationAdapter);
         recyclerView.setLayoutManager(layoutManager);
-
+        // 设置短按和长按监听器
 //        connectToServer("router.wxioi.fun", 8991);
 
         // 绑定Service
