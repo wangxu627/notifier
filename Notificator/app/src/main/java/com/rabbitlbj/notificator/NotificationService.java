@@ -32,9 +32,8 @@ import java.util.List;
 public class NotificationService extends Service {
     private static List<NotificationAdapter.NotificationItem> notificationList = new ArrayList<>();
     private static final String NOTIFICATION_CHANNEL = "my_channel_id";
-
+    private static final int MAX_RECONNECT_ATTEMPTS = 5;
     private Messenger activityMessenger;
-
     private Socket socket;
     @Override
     public void onCreate() {
@@ -44,9 +43,7 @@ public class NotificationService extends Service {
         Notification notification = buildNotification("I`m notificator", "Keep running...");
         startForeground(1, notification);
 
-//        connectToServer("router.wxioi.fun", 8991);
         readFromSocket();
-//        monitorSocket();
         restoreData();
     }
 
@@ -54,7 +51,6 @@ public class NotificationService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d("AAAAAA", "onStartCommand");
         if (intent != null) {
-            // 获取从Activity传递过来的Messenger
             activityMessenger = intent.getParcelableExtra("messenger");
             sendAllListData();
         }
@@ -114,7 +110,7 @@ public class NotificationService extends Service {
         }
     }
 
-    private void connectToServer(String serverIp, int serverPort) {
+    private void closeSocket() {
         try {
             if (socket != null && socket.isConnected()) {
                 socket.close();
@@ -122,20 +118,16 @@ public class NotificationService extends Service {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
+    }
+    private void connectToServer(String serverIp, int serverPort) {
+        closeSocket();
         int reconnectAttempts = 0;
-        final int MAX_RECONNECT_ATTEMPTS = 5;
         while (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
             try {
-                //            socket = new Socket(serverIp, serverPort);
                 SocketAddress socketAddress = new InetSocketAddress(serverIp, serverPort);
                 socket = new Socket();
                 socket.connect(socketAddress);
-                socket.setKeepAlive(true); // 启用TCP Keep-Alive机制
-                //             socket.setTcpKeepAlive(true); // 对于Android，需要设置这个选项
-                //             socket.setSoTimeout(5); // 连接空闲超时时间
-                //             socket.setSoLinger(true, 5); // 如果连接在空闲期间被关闭，则底层套接字会立即关闭
-
+                socket.setKeepAlive(true);
                 break;
             } catch (IOException e) {
                 try {
@@ -180,34 +172,6 @@ public class NotificationService extends Service {
                     }
                 }
 
-            }
-        }).start();
-    }
-
-    private void monitorSocket() {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    try {
-                        Thread.sleep(1000);
-                        boolean closed = socket.isClosed();
-                        boolean connected = socket.isConnected();
-
-                        Log.i("IIIIIII :  ", (closed ? "closed" : "") + "   " + (connected ? "connected" : ""));
-
-                        if(closed) {
-
-                        }
-
-                        if(connected) {
-
-                        }
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-
-                }
             }
         }).start();
     }
