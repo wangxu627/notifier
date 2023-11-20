@@ -21,6 +21,7 @@ import com.google.gson.reflect.TypeToken;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.Type;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -40,10 +41,13 @@ public class NotificationService extends Service {
         Log.d("AAAAAA", "onCreate");
         super.onCreate();
 
+        // Notification
         Notification notification = buildNotification("I`m notificator", "Keep running...");
         startForeground(1, notification);
-
+        // Socket
         readFromSocket();
+        startHeartBeat();
+        // Data
         restoreData();
     }
 
@@ -167,11 +171,33 @@ public class NotificationService extends Service {
                         } catch (Exception e2) {
                             e2.printStackTrace();
                         }
+                        Log.e("ERROR SocketException", e.getMessage(), e);
                     } catch (IOException e) {
                         e.printStackTrace();
+                        Log.e("ERROR IOException", e.getMessage(), e);
                     }
                 }
 
+            }
+        }).start();
+    }
+
+    private void startHeartBeat() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        Thread.sleep(5000);
+                        OutputStream outputStream = socket.getOutputStream();
+                        String heartbeatData = "1";
+                        outputStream.write(heartbeatData.getBytes());
+                        outputStream.flush();
+                    } catch (Exception e) {
+                        Log.e("ERROR", e.getMessage(), e);
+                        connectToServer("router.wxioi.fun", 8991);
+                    }
+                }
             }
         }).start();
     }
