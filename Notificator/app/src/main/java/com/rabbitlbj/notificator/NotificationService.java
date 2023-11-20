@@ -22,7 +22,10 @@ import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Type;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketAddress;
+import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,13 +34,19 @@ public class NotificationService extends Service {
     private static final String NOTIFICATION_CHANNEL = "my_channel_id";
 
     private Messenger activityMessenger;
+
+    private Socket socket;
     @Override
     public void onCreate() {
         Log.d("AAAAAA", "onCreate");
         super.onCreate();
-        Notification notification = buildNotification("", "");
+
+        Notification notification = buildNotification("I`m notificator", "Keep running...");
         startForeground(1, notification);
-        connectToServer("router.wxioi.fun", 8991);
+
+//        connectToServer("router.wxioi.fun", 8991);
+        readFromSocket();
+//        monitorSocket();
         restoreData();
     }
 
@@ -106,35 +115,108 @@ public class NotificationService extends Service {
     }
 
     private void connectToServer(String serverIp, int serverPort) {
+        try {
+            if (socket != null && socket.isConnected()) {
+                socket.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        int reconnectAttempts = 0;
+        final int MAX_RECONNECT_ATTEMPTS = 5;
+        while (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            try {
+                //            socket = new Socket(serverIp, serverPort);
+                SocketAddress socketAddress = new InetSocketAddress(serverIp, serverPort);
+                socket = new Socket();
+                socket.connect(socketAddress);
+                socket.setKeepAlive(true); // 启用TCP Keep-Alive机制
+                //             socket.setTcpKeepAlive(true); // 对于Android，需要设置这个选项
+                //             socket.setSoTimeout(5); // 连接空闲超时时间
+                //             socket.setSoLinger(true, 5); // 如果连接在空闲期间被关闭，则底层套接字会立即关闭
+
+                break;
+            } catch (IOException e) {
+                try {
+                    Thread.sleep(1000); // 5秒后尝试重新连接
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace();
+                }
+            }
+            reconnectAttempts++;
+        }
+    }
+
+    private void readFromSocket() {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                try {
-                    Socket socket = new Socket(serverIp, serverPort);
-                    InputStream inputStream = socket.getInputStream();
-                    byte[] buffer = new byte[1024];
-                    int bytesRead;
-                    while ((bytesRead = inputStream.read(buffer)) != -1) {
-                        String message = new String(buffer, 0, bytesRead);
-                        String[] parts = message.split("\u0001");
-                        if(parts.length == 2) {
-                            addMessage(parts[0], parts[1]);
-                        } else {
-                            addMessage("", parts[0]);
-                        }
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
+                while (true) {
+                    try {
+                        connectToServer("router.wxioi.fun", 8991);
 
-            void addMessage(String title, String content) {
-                Log.d("TTTTT", title + "    " + content);
-                showNotification(title, content);
-                addItemToList(title, content);
-                Log.d("TTTT", String.valueOf(notificationList.size()));
+                        InputStream inputStream = socket.getInputStream();
+                        byte[] buffer = new byte[1024];
+                        int bytesRead;
+                        while ((bytesRead = inputStream.read(buffer)) != -1) {
+                            String message = new String(buffer, 0, bytesRead);
+                            String[] parts = message.split("\u0001");
+                            if(parts.length == 2) {
+                                addMessage(parts[0], parts[1]);
+                            } else {
+                                addMessage("", parts[0]);
+                            }
+                        }
+                    } catch (java.net.SocketException e) {
+                        try {
+                            connectToServer("router.wxioi.fun", 8991);
+
+                        } catch (Exception e2) {
+                            e2.printStackTrace();
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
             }
         }).start();
+    }
+
+    private void monitorSocket() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        Thread.sleep(1000);
+                        boolean closed = socket.isClosed();
+                        boolean connected = socket.isConnected();
+
+                        Log.i("IIIIIII :  ", (closed ? "closed" : "") + "   " + (connected ? "connected" : ""));
+
+                        if(closed) {
+
+                        }
+
+                        if(connected) {
+
+                        }
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                }
+            }
+        }).start();
+    }
+
+    void addMessage(String title, String content) {
+        Log.d("TTTTT", title + "    " + content);
+        showNotification(title, content);
+        addItemToList(title, content);
+        Log.d("TTTT", String.valueOf(notificationList.size()));
     }
 
     private void showNotification(String title, String content) {
